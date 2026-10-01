@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>员工管理系统</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .container-box {margin-top:50px;}
+    .hidden {display:none;}
+    .sidebar{
+      width:220px;
+      background:#222d32;
+      color:#fff;
+      position:fixed;
+      height:100vh;
+      padding-top:20px;
+    }
+    .sidebar a{
+      display:block;
+      color:#b8c7ce;
+      padding:12px 20px;
+      text-decoration:none;
+    }
+    .sidebar a:hover{background:#1e282c;color:#fff;}
+    .main-content{margin-left:220px;padding:20px;}
+  </style>
+<!-- Supabase JS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<!-- 登录页面 -->
+<div id="loginPage" class="container container-box">
+  <div class="row justify-content-center">
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header text-center"><h4>员工管理系统 - 登录</h4></div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label>账号</label>
+            <input type="text" id="loginUser" class="form-control" placeholder="输入账号">
+          </div>
+          <div class="mb-3">
+            <label>密码</label>
+            <input type="password" id="loginPwd" class="form-control" placeholder="输入密码">
+          </div>
+          <button onclick="login()" class="btn btn-primary w-100">登录</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- 管理端页面 -->
+<div id="adminPage" class="hidden">
+  <div class="sidebar">
+    <div class="px-3 mb-4"><h5>管理员后台</h5></div>
+    <a href="#" onclick="showTab('empList')">员工列表</a>
+    <a href="#" onclick="showTab('addEmp')">新增员工</a>
+    <a href="#" onclick="showTab('profitRank')">收益榜单</a>
+    <a href="#" onclick="noticeTab()">公告管理</a>
+    <a href="#" onclick="showTab('myInfo')">我的信息</a>
+    <a href="#" onclick="logout()">退出登录</a>
+  </div>
+  <div class="main-content">
+    <!-- 员工列表 -->
+    <div id="empList" class="tab">
+      <h3>员工管理列表</h3>
+      <table class="table table-bordered table-striped">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>姓名</th>
+            <th>账号</th>
+            <th>部门</th>
+            <th>岗位</th>
+            <th>为本公司创造总收益</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="empTableBody"></tbody>
+      </table>
+    </div>
+    <!-- 添加员工 -->
+    <div id="addEmp" class="tab hidden">
+      <h3>新增员工</h3>
+      <div class="row col-md-6">
+        <div class="mb-3">
+          <label>姓名</label>
+          <input class="form-control" id="addName">
+        </div>
+        <div class="mb-3">
+          <label>登录账号</label>
+          <input class="form-control" id="addAccount">
+        </div>
+        <div class="mb-3">
+          <label>密码</label>
+          <input class="form-control" id="addPwd">
+        </div>
+        <div class="mb-3">
+          <label>部门</label>
+          <input class="form-control" id="addDept">
+        </div>
+        <div class="mb-3">
+          <label>岗位</label>
+          <input class="form-control" id="addJob">
+        </div>
+        <button onclick="addEmployee()" class="btn btn-success">保存新增</button>
+      </div>
+    </div>
+    <!-- 收益榜单页面 -->
+    <div id="profitRank" class="tab hidden">
+      <h3>员工收益榜单</h3>
+      <div class="mb-4">
+        <button class="btn btn-primary rank-btn" onclick="renderRank('day')">日榜</button>
+        <button class="btn btn-primary rank-btn" onclick="renderRank('week')">周榜</button>
+        <button class="btn btn-primary rank-btn" onclick="renderRank('month')">月榜</button>
+        <button class="btn btn-primary rank-btn" onclick="renderRank('year')">年榜</button>
+        <button class="btn btn-primary rank-btn" onclick="renderRank('total')">总榜</button>
+      </div>
+      <h4 id="rankTitle">总收益排行榜</h4>
+      <table class="table table-bordered table-striped">
+        <thead>
+          <tr>
+            <th>排名</th>
+            <th>员工ID</th>
+            <th>姓名</th>
+            <th>部门</th>
+            <th>岗位</th>
+            <th>收益金额</th>
+          </tr>
+        </thead>
+        <tbody id="rankTableBody"></tbody>
+      </table>
+    </div>
+    <!-- 管理员个人信息 -->
+    <div id="myInfo" class="tab hidden">
+      <h3>我的信息</h3>
+      <div class="col-md-6">
+        <p>账号：admin</p>
+        <p>角色：系统管理员</p>
+        <p>权限：全部权限</p>
+      </div>
+    </div>
+    <!-- 公告管理【管理员】 -->
+    <div id="noticeTab" class="tab hidden">
+      <h3>公告管理（管理员发布）</h3>
+      <div class="card p-3 mb-4 col-md-8">
+        <h5>发布新公告</h5>
+        <div class="mb-3">
+          <label>公告标题</label>
+          <input type="text" id="noticeTitle" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label>公告内容</label>
+          <textarea id="noticeContent" class="form-control" rows="4"></textarea>
+        </div>
+        <button onclick="publishNotice()" class="btn btn-primary">发布公告</button>
+      </div>
+      <h4>全部公告列表</h4>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>编号</th>
+            <th>标题</th>
+            <th>发布时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="noticeTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<!-- 员工客户端页面 -->
+<div id="userPage" class="hidden">
+  <div class="sidebar">
+    <div class="px-3 mb-4"><h5>员工客户端</h5></div>
+    <a href="#" onclick="showUserTab('userInfo')">个人资料</a>
+    <a href="#" onclick="showUserTab('userRank')">收益榜单</a>
+    <a href="#" onclick="showUserTab('userNotice')">查看公告</a>
+    <a href="#" onclick="showUserTab('changePwd')">修改密码</a>
+    <a href="#" onclick="logout()">退出登录</a>
+  </div>
+  <div class="main-content">
+    <div id="userInfo" class="userTab">
+      <h3>个人信息</h3>
+      <div class="col-md-6">
+        <p>姓名：<span id="uName"></span></p>
+        <p>账号：<span id="uAccount"></span></p>
+        <p>部门：<span id="uDept"></span></p>
+        <p>岗位：<span id="uJob"></span></p>
+        <p><strong>为本公司创造总收益：</strong><span id="uProfit">0</span> w</p>
+      </div>
+    </div>
+    <div id="changePwd" class="userTab hidden">
+      <h3>修改密码</h3>
+      <div class="col-md-6">
+        <div class="mb-3">
+          <label>旧密码</label>
+          <input type="password" id="oldPwd" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label>新密码</label>
+          <input type="password" id="newPwd" class="form-control">
+        </div>
+        <button onclick="updatePwd()" class="btn btn-primary">确认修改</button>
+      </div>
+    </div>
+    <!--员工公告页面-->
+    <div id="userNotice" class="userTab hidden">
+      <h3>公司公告</h3>
+      <div id="userNoticeBox">
+      </div>
+    </div>
+    <!--员工收益榜单-->
+    <div id="userRank" class="userTab hidden">
+      <h3>收益排行榜</h3>
+      <div class="mb-4">
+          <button class="btn btn-primary rank-btn" onclick="renderUserRank('day')">日榜</button>
+          <button class="btn btn-primary rank-btn" onclick="renderUserRank('week')">周榜</button>
+          <button class="btn btn-primary rank-btn" onclick="renderUserRank('month')">月榜</button>
+          <button class="btn btn-primary rank-btn" onclick="renderUserRank('year')">年榜</button>
+          <button class="btn btn-primary rank-btn" onclick="renderUserRank('total')">总榜</button>
+      </div>
+      <h4 id="userRankTitle">总收益排行榜</h4>
+      <table class="table table-bordered table-striped">
+          <thead>
+              <tr>
+                  <th>排名</th>
+                  <th>员工ID</th>
+                  <th>姓名</th>
+                  <th>部门</th>
+                  <th>岗位</th>
+                  <th>收益金额</th>
+              </tr>
+          </thead>
+          <tbody id="userRankTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<!-- 编辑弹窗 -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5>编辑员工</h5></div>
+      <div class="modal-body">
+        <input type="hidden" id="editId">
+        <div class="mb-3"><label>姓名</label><input class="form-control" id="editName"></div>
+        <div class="mb-3"><label>账号</label><input class="form-control" id="editAccount"></div>
+        <div class="mb-3"><label>部门</label><input class="form-control" id="editDept"></div>
+        <div class="mb-3"><label>岗位</label><input class="form-control" id="editJob"></div>
+        <div class="mb-3"><label>为本公司创造总收益(w)</label><input class="form-control" id="editProfit" type="number"></div>
+        <hr>
+        <div class="mb-3">
+          <label>新增一笔收益（计入榜单）</label>
+          <input class="form-control" id="addProfitRecord" type="number" placeholder="填写本次收益，留空不添加">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+        <button onclick="saveEdit()" class="btn btn-primary">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Supabase初始化 只声明一次！
+const SUPABASE_URL = "https://yiedgsxpnaiahgnghcrn.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZWRnc3hwbmFpYWhnbmdoY3JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4NTMwODQsImV4cCI6MjEwNjQyOTA4NH0.tEP8wsQKCa3QNwDL-KBdjbLAIB8GUtLX0saJoXTLAf8";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// 内存临时缓存（从数据库加载后放这里）
+let empList = [];
+let currentUser = null;
+const modal = new bootstrap.Modal(document.getElementById('editModal'));
+let profitRecords = [];
+let noticeList = [];
+
+// ===== Supabase 数据加载函数 =====
+async function loadAllData(){
+  //读取员工
+  const {data:empData} = await supabase.from("employees").select("*");
+  empList = empData || [];
+  //读取收益流水
+  const {data:profitData} = await supabase.from("profit_records").select("*");
+  profitRecords = profitData || [];
+  //读取公告
+  const {data:noticeData} = await supabase.from("announcements").select("*").order("created_at",{ascending:false});
+  noticeList = noticeData || [];
+}
+
+// 登录函数
+async function login(){
+  const acc = document.getElementById("loginUser").value.trim();
+  const pwd = document.getElementById("loginPwd").value.trim();
+  // 从supabase查询员工账号密码
+  const {data,error} = await supabase.from("employees").select("*").eq("account",acc).eq("password",pwd).single();
+  if(error || !data){
+    alert("账号或密码错误");
+    return;
+  }
+  currentUser = data;
+  document.getElementById("loginPage").classList.add("hidden");
+  if(currentUser.is_admin){
+    document.getElementById("adminPage").classList.remove("hidden");
+    await renderTable();
+  }else{
+    document.getElementById("userPage").classList.remove("hidden");
+    renderUserInfo();
+  }
+}
+
+// 退出登录
+function logout(){
+  currentUser=null;
+  document.getElementById("loginPage").classList.remove("hidden");
+  document.getElementById("adminPage").classList.add("hidden");
+  document.getElementById("userPage").classList.add("hidden");
+  document.getElementById("loginUser").value="";
+  document.getElementById("loginPwd").value="";
+}
+
+// ==========管理员功能==========
+function showTab(id){
+  document.querySelectorAll(".tab").forEach(el=>el.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+}
+async function renderTable(){
+  const {data} = await supabase.from("employees").select("*");
+  empList = data;
+  const tbody = document.getElementById("empTableBody");
+  tbody.innerHTML="";
+  empList.forEach(item=>{
+    tbody.innerHTML += `
+    <tr>
+      <td>${item.id}</td>
+      <td>${item.name}</td>
+      <td>${item.account}</td>
+      <td>${item.dept}</td>
+      <td>${item.job}</td>
+      <td>${item.profit || 0} w</td>
+      <td>
+        <button class="btn btn-sm btn-warning" onclick="openEdit(${item.id})">编辑</button>
+        <button class="btn btn-sm btn-danger" onclick="delEmp(${item.id})">删除</button>
+      </td>
+    </tr>`
+  })
+}
+// 新增员工
+async function addEmployee(){
+  const name = document.getElementById("addName").value.trim();
+  const account = document.getElementById("addAccount").value.trim();
+  const pwd = document.getElementById("addPwd").value.trim();
+  const dept = document.getElementById("addDept").value.trim();
+  const job = document.getElementById("addJob").value.trim();
+  if(!name||!account||!pwd){alert("必填项不能为空");return;}
+  const {error} = await supabase.from("employees").insert([{
+    name,account,password:pwd,dept,job,is_admin:false,profit:0
+  }]);
+  if(error){
+    alert("新增失败："+error.message);
+    return;
+  }
+  alert("新增成功");
+  showTab("empList");
+  await renderTable();
+  document.getElementById("addName").value="";
+  document.getElementById("addAccount").value="";
+  document.getElementById("addPwd").value="";
+  document.getElementById("addDept").value="";
+  document.getElementById("addJob").value="";
+}
+// 编辑弹窗打开
+function openEdit(id){
+  const emp = empList.find(x=>x.id===id);
+  document.getElementById("editId").value = emp.id;
+  document.getElementById("editName").value = emp.name;
+  document.getElementById("editAccount").value = emp.account;
+  document.getElementById("editDept").value = emp.dept;
+  document.getElementById("editJob").value = emp.job;
+  document.getElementById("editProfit").value = emp.profit || 0;
+  document.getElementById("addProfitRecord").value = "";
+  modal.show();
+}
+// 保存编辑 + 添加收益记录
+async function saveEdit(){
+  const id = Number(document.getElementById("editId").value);
+  const newName = document.getElementById("editName").value;
+  const newAccount = document.getElementById("editAccount").value;
+  const newDept = document.getElementById("editDept").value;
+  const newJob = document.getElementById("editJob").value;
+  const newProfit = Number(document.getElementById("editProfit").value) || 0;
+  //更新员工基础信息
+  await supabase.from("employees").update({
+    name:newName,
+    account:newAccount,
+    dept:newDept,
+    job:newJob,
+    profit:newProfit
+  }).eq("id",id);
+
+  //新增一笔收益记录，用于榜单
+  const addP = Number(document.getElementById("addProfitRecord").value);
+  if(addP >0){
+    await supabase.from("profit_records").insert([{
+      emp_id:id,
+      amount:addP
+    }])
+  }
+  await renderTable();
+  modal.hide();
+  alert("修改成功");
+}
+async function delEmp(id){
+  if(!confirm("确定删除吗？"))return;
+  await supabase.from("employees").delete().eq("id",id);
+  await supabase.from("profit_records").delete().eq("emp_id",id);
+  await renderTable();
+}
+// =========收益榜单核心逻辑=========
+async function renderRank(type){
+  const {data} = await supabase.from("profit_records").select("*,employees(name,dept,job)");
+  profitRecords = data;
+  const tbody = document.getElementById("rankTableBody");
+  tbody.innerHTML = "";
+  let titleText = "";
+  let filterRecords = [];
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if(type === "day"){
+    titleText = "日收益榜（今日）";
+    filterRecords = profitRecords.filter(r=> new Date(r.created_at) >= todayStart);
+  }else if(type === "week"){
+    titleText = "周收益榜（本周）";
+    let weekStart = new Date(todayStart);
+    let day = weekStart.getDay() ||7;
+    weekStart.setDate(weekStart.getDate() - day +1);
+    filterRecords = profitRecords.filter(r=> new Date(r.created_at) >= weekStart);
+  }else if(type === "month"){
+    titleText = "月收益榜（本月）";
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    filterRecords = profitRecords.filter(r=> new Date(r.created_at) >= monthStart);
+  }else if(type === "year"){
+    titleText = "年收益榜（本年）";
+    const yearStart = new Date(now.getFullYear(),0,1);
+    filterRecords = profitRecords.filter(r=> new Date(r.created_at) >= yearStart);
+  }else if(type === "total"){
+    titleText = "总收益榜（全部记录）";
+    filterRecords = [...profitRecords];
+  }
+  document.getElementById("rankTitle").innerText = titleText;
+  // 分组求和
+  let group = {};
+  filterRecords.forEach(r=>{
+    if(!group[r.emp_id]) group[r.emp_id] = 0;
+    group[r.emp_id] += r.amount;
+  });
+  // 转数组，关联员工信息
+  let list = [];
+  for(let eid in group){
+    const emp = empList.find(x=>x.id == eid);
+    if(emp){
+      list.push({
+        id:emp.id,
+        name:emp.name,
+        dept:emp.dept,
+        job:emp.job,
+        total:group[eid]
+      })
+    }
+  }
+  // 从高到低排序
+  list.sort((a,b)=>b.total - a.total);
+  // 渲染表格
+  list.forEach((item,idx)=>{
+    tbody.innerHTML += `
+    <tr>
+      <td>${idx+1}</td>
+      <td>${item.id}</td>
+      <td>${item.name}</td>
+      <td>${item.dept}</td>
+      <td>${item.job}</td>
+      <td>${item.total} w</td>
+    </tr>`
+  })
+  if(list.length===0){
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center">暂无收益数据</td></tr>`
+  }
+}
+// ==========员工客户端功能==========
+function showUserTab(id){
+  document.querySelectorAll(".userTab").forEach(el=>el.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+  if(id === "userNotice"){
+    renderUserNotice();
+  }
+  if(id === "userRank"){
+    renderUserRank("total");
+  }
+}
+// 渲染个人收益
+function renderUserInfo(){
+  document.getElementById("uName").innerText = currentUser.name;
+  document.getElementById("uAccount").innerText = currentUser.account;
+  document.getElementById("uDept").innerText = currentUser.dept;
+  document.getElementById("uJob").innerText = currentUser.job;
+  document.getElementById("uProfit").innerText = currentUser.profit || 0;
+}
+async function updatePwd(){
+  const old = document.getElementById("oldPwd").value;
+  const newP = document.getElementById("newPwd").value;
+  if(currentUser.password !== old){alert("旧密码错误");return;}
+  if(!newP){alert("新密码不能为空");return;}
+  await supabase.from("employees").update({password:newP}).eq("id",currentUser.id);
+  alert("密码修改成功，请重新登录");
+  logout();
+}
+// ==========公告功能==========
+function noticeTab(){
+  showTab("noticeTab");
+  renderNoticeAdmin();
+}
+async function publishNotice(){
+  const title = document.getElementById("noticeTitle").value.trim();
+  const content = document.getElementById("noticeContent").value.trim();
+  if(!title || !content){
+    alert("标题和内容不能为空！");
+    return;
+  }
+  await supabase.from("announcements").insert([{
+    title,content,creator_emp_id:currentUser.id
+  }]);
+  alert("公告发布成功！员工端可以查看");
+  document.getElementById("noticeTitle").value="";
+  document.getElementById("noticeContent").value="";
+  renderNoticeAdmin();
+}
+async function renderNoticeAdmin(){
+  const {data} = await supabase.from("announcements").select("*").order("created_at",{ascending:false});
+  noticeList = data;
+  const tbody = document.getElementById("noticeTableBody");
+  tbody.innerHTML="";
+  noticeList.forEach(item=>{
+    const t = new Date(item.created_at).toLocaleString();
+    tbody.innerHTML +=`
+      <tr>
+        <td>${item.id}</td>
+        <td>${item.title}</td>
+        <td>${t}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="delNotice(${item.id})">删除</button></td>
+      </tr>
+    `
+  })
+}
+async function delNotice(id){
+  if(!confirm("确定删除这条公告？员工将看不到这条公告"))return;
+  await supabase.from("announcements").delete().eq("id",id);
+  renderNoticeAdmin();
+}
+async function renderUserNotice(){
+  const {data} = await supabase.from("announcements").select("*").order("created_at",{ascending:false});
+  noticeList = data;
+  const box = document.getElementById("userNoticeBox");
+  if(noticeList.length ===0){
+    box.innerHTML = "<div class='alert alert-info'>暂无公告</div>";
+    return;
+  }
+  let html = "";
+  noticeList.forEach(item=>{
+    const t = new Date(item.created_at).toLocaleString();
+    html += `
+    <div class="card mb-3">
+      <div class="card-header">
+        <h5>${item.title}</h5>
+        <small class="text-muted">发布时间：${t}</small>
+      </div>
+      <div class="card-body">
+        <p>${item.content}</p>
+      </div>
+    </div>
+    `
+  })
+  box.innerHTML = html;
+}
+async function renderUserRank(type){
+  const {data} = await supabase.from("profit_records").select("*,employees(name,dept,job)");
+  profitRecords = data;
+  const tbody = document.getElementById("userRankTableBody");
+  tbody.innerHTML = "";
+  let titleText = "";
+  let filterRecords = [];
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if(type === "day"){
+    titleText = "日收益榜（今日）";
+    filterRecords = profitRecords.filter(r=> new Date(r.created_at) >= todayStart);
+  }else if(type === "week"){
+    titleText = "周收益榜（本周）";
+    let weekStart = new Date(todayStart);
+    let day = weekStart.getDay() ||7;
+    weekStart.setDate(weekStart.getDate() - day +1);
+    filterRecords = profitRecords.filter(r=> new Date(r.created_at) >= weekStart);
+  }else if(type === "month"){
+    titleText = "月收益榜（本月）";
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    filterRecords = profitRecords.filter(r=> new Date(r.created_at) >= monthStart);
+  }else if(type === "year"){
+    titleText = "年收益榜（本年）";
+    const yearStart = new Date(now.getFullYear(),0,1);
+    filterRecords = profitRecords.filter(r=> new Date(r.created_at) >= yearStart);
+  }else if(type === "total"){
+    titleText = "总收益榜（全部记录）";
+    filterRecords = [...profitRecords];
+  }
+  document.getElementById("userRankTitle").innerText = titleText;
+  let group = {};
+  filterRecords.forEach(r=>{
+    if(!group[r.emp_id]) group[r.emp_id] = 0;
+    group[r.emp_id] += r.amount;
+  });
+  let list = [];
+  for(let eid in group){
+    const emp = empList.find(x=>x.id == eid);
+    if(emp){
+      list.push({
+        id:emp.id,
+        name:emp.name,
+        dept:emp.dept,
+        job:emp.job,
+        total:group[eid]
+      })
+    }
+  }
+  list.sort((a,b)=>b.total - a.total);
+  list.forEach((item,idx)=>{
+    tbody.innerHTML += `
+    <tr>
+      <td>${idx+1}</td>
+      <td>${item.id}</td>
+      <td>${item.name}</td>
+      <td>${item.dept}</td>
+      <td>${item.job}</td>
+      <td>${item.total} w</td>
+    </tr>`
+  })
+  if(list.length===0){
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center">暂无收益数据</td></tr>`
+  }
+}
+async function testSupabase() {
+  const { data, error } = await supabase.from('announcements').select('*');
+  console.log("测试查询结果：", data, error);
+}
+//页面加载完成自动执行测试
+window.onload = async function(){
+  await loadAllData();
+  await testSupabase();
+}
+</script>
+</body>
+</html>
