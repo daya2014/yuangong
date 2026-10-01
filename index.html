@@ -269,7 +269,16 @@
 // =========只初始化一次Supabase=========
 const SUPABASE_URL = "https://yiedgsxpnaiahgnghcrn.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZWRnc3hwbmFpYWhnbmdoY3JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4NTMwODQsImV4cCI6MjEwNjQyOTA4NH0.tEP8wsQKCa3QNwDL-KBdjbLAIB8GUtLX0saJoXTLAf8";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// 重点：如果已经有supabase实例，直接复用，不再新建
+let supabase;
+if(!window.supabaseClient){
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  window.supabaseClient = supabase;
+}else{
+  supabase = window.supabaseClient;
+}
+
 
 // 内存临时缓存（从数据库加载后放这里）
 let empList = [];
