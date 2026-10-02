@@ -269,7 +269,6 @@
 // =========只初始化一次Supabase=========
 const SUPABASE_URL = "https://yiedgsxpnaiahgnghcrn.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZWRnc3hwbmFpYWhnbmdoY3JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4NTMwODQsImV4cCI6MjEwNjQyOTA4NH0.tEP8wsQKCa3QNwDL-KBdjbLAIB8GUtLX0saJoXTLAf8";
-
 let supabaseClient;
 if(!window.supabaseGlobal){
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -277,36 +276,30 @@ if(!window.supabaseGlobal){
 }else{
   supabaseClient = window.supabaseGlobal;
 }
-// 后面所有代码统一用 supabaseClient 代替原来的 supabase
-
-
-
 // 内存临时缓存（从数据库加载后放这里）
 let empList = [];
 let currentUser = null;
 const modal = new bootstrap.Modal(document.getElementById('editModal'));
 let profitRecords = [];
 let noticeList = [];
-
 // ===== Supabase 数据加载函数 =====
 async function loadAllData(){
   //读取员工
-  const {data:empData} = await supabase.from("employees").select("*");
+  const {data:empData} = await supabaseClient.from("employees").select("*");
   empList = empData || [];
   //读取收益流水
-  const {data:profitData} = await supabase.from("profit_records").select("*");
+  const {data:profitData} = await supabaseClient.from("profit_records").select("*");
   profitRecords = profitData || [];
   //读取公告
-  const {data:noticeData} = await supabase.from("announcements").select("*").order("created_at",{ascending:false});
+  const {data:noticeData} = await supabaseClient.from("announcements").select("*").order("created_at",{ascending:false});
   noticeList = noticeData || [];
 }
-
 // 登录函数
 async function login(){
   const acc = document.getElementById("loginUser").value.trim();
   const pwd = document.getElementById("loginPwd").value.trim();
   // 从supabase查询员工账号密码
-  const {data,error} = await supabase.from("employees").select("*").eq("account",acc).eq("password",pwd).single();
+  const {data,error} = await supabaseClient.from("employees").select("*").eq("account",acc).eq("password",pwd).single();
   if(error || !data){
     alert("账号或密码错误");
     return;
@@ -321,7 +314,6 @@ async function login(){
     renderUserInfo();
   }
 }
-
 // 退出登录
 function logout(){
   currentUser=null;
@@ -331,14 +323,13 @@ function logout(){
   document.getElementById("loginUser").value="";
   document.getElementById("loginPwd").value="";
 }
-
 // ==========管理员功能==========
 function showTab(id){
   document.querySelectorAll(".tab").forEach(el=>el.classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
 }
 async function renderTable(){
-  const {data} = await supabase.from("employees").select("*");
+  const {data} = await supabaseClient.from("employees").select("*");
   empList = data;
   const tbody = document.getElementById("empTableBody");
   tbody.innerHTML="";
@@ -366,7 +357,7 @@ async function addEmployee(){
   const dept = document.getElementById("addDept").value.trim();
   const job = document.getElementById("addJob").value.trim();
   if(!name||!account||!pwd){alert("必填项不能为空");return;}
-  const {error} = await supabase.from("employees").insert([{
+  const {error} = await supabaseClient.from("employees").insert([{
     name,account,password:pwd,dept,job,is_admin:false,profit:0
   }]);
   if(error){
@@ -403,18 +394,17 @@ async function saveEdit(){
   const newJob = document.getElementById("editJob").value;
   const newProfit = Number(document.getElementById("editProfit").value) || 0;
   //更新员工基础信息
-  await supabase.from("employees").update({
+  await supabaseClient.from("employees").update({
     name:newName,
     account:newAccount,
     dept:newDept,
     job:newJob,
     profit:newProfit
   }).eq("id",id);
-
   //新增一笔收益记录，用于榜单
   const addP = Number(document.getElementById("addProfitRecord").value);
   if(addP >0){
-    await supabase.from("profit_records").insert([{
+    await supabaseClient.from("profit_records").insert([{
       emp_id:id,
       amount:addP
     }])
@@ -425,13 +415,13 @@ async function saveEdit(){
 }
 async function delEmp(id){
   if(!confirm("确定删除吗？"))return;
-  await supabase.from("employees").delete().eq("id",id);
-  await supabase.from("profit_records").delete().eq("emp_id",id);
+  await supabaseClient.from("employees").delete().eq("id",id);
+  await supabaseClient.from("profit_records").delete().eq("emp_id",id);
   await renderTable();
 }
 // =========收益榜单核心逻辑=========
 async function renderRank(type){
-  const {data} = await supabase.from("profit_records").select("*,employees(name,dept,job)");
+  const {data} = await supabaseClient.from("profit_records").select("*,employees(name,dept,job)");
   profitRecords = data;
   const tbody = document.getElementById("rankTableBody");
   tbody.innerHTML = "";
@@ -523,7 +513,7 @@ async function updatePwd(){
   const newP = document.getElementById("newPwd").value;
   if(currentUser.password !== old){alert("旧密码错误");return;}
   if(!newP){alert("新密码不能为空");return;}
-  await supabase.from("employees").update({password:newP}).eq("id",currentUser.id);
+  await supabaseClient.from("employees").update({password:newP}).eq("id",currentUser.id);
   alert("密码修改成功，请重新登录");
   logout();
 }
@@ -539,7 +529,7 @@ async function publishNotice(){
     alert("标题和内容不能为空！");
     return;
   }
-  await supabase.from("announcements").insert([{
+  await supabaseClient.from("announcements").insert([{
     title,content,creator_emp_id:currentUser.id
   }]);
   alert("公告发布成功！员工端可以查看");
@@ -548,7 +538,7 @@ async function publishNotice(){
   renderNoticeAdmin();
 }
 async function renderNoticeAdmin(){
-  const {data} = await supabase.from("announcements").select("*").order("created_at",{ascending:false});
+  const {data} = await supabaseClient.from("announcements").select("*").order("created_at",{ascending:false});
   noticeList = data;
   const tbody = document.getElementById("noticeTableBody");
   tbody.innerHTML="";
@@ -566,11 +556,11 @@ async function renderNoticeAdmin(){
 }
 async function delNotice(id){
   if(!confirm("确定删除这条公告？员工将看不到这条公告"))return;
-  await supabase.from("announcements").delete().eq("id",id);
+  await supabaseClient.from("announcements").delete().eq("id",id);
   renderNoticeAdmin();
 }
 async function renderUserNotice(){
-  const {data} = await supabase.from("announcements").select("*").order("created_at",{ascending:false});
+  const {data} = await supabaseClient.from("announcements").select("*").order("created_at",{ascending:false});
   noticeList = data;
   const box = document.getElementById("userNoticeBox");
   if(noticeList.length ===0){
@@ -595,7 +585,7 @@ async function renderUserNotice(){
   box.innerHTML = html;
 }
 async function renderUserRank(type){
-  const {data} = await supabase.from("profit_records").select("*,employees(name,dept,job)");
+  const {data} = await supabaseClient.from("profit_records").select("*,employees(name,dept,job)");
   profitRecords = data;
   const tbody = document.getElementById("userRankTableBody");
   tbody.innerHTML = "";
@@ -660,7 +650,7 @@ async function renderUserRank(type){
   }
 }
 async function testSupabase() {
-  const { data, error } = await supabase.from('announcements').select('*');
+  const { data, error } = await supabaseClient.from('announcements').select('*');
   console.log("测试查询结果：", data, error);
 }
 //页面加载完成自动执行测试
@@ -668,6 +658,7 @@ window.onload = async function(){
   await loadAllData();
   await testSupabase();
 }
+
 </script>
 </body>
 </html>
