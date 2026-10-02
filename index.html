@@ -66,47 +66,45 @@
     <div id="empList" class="tab">
       <h3>员工管理列表</h3>
       <table class="table table-bordered table-striped">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>姓名</th>
-            <th>账号</th>
-            <th>部门</th>
-            <th>岗位</th>
-            <th>为本公司创造总收益</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody id="empTableBody"></tbody>
+       <thead>
+  <tr>
+    <th>ID</th>
+    <th>姓名</th>
+    <th>账号</th>
+    <th>密码</th>
+    <th>岗位</th>
+    <th>为本公司创造总收益</th>
+    <th>操作</th>
+  </tr>
+</thead>
+<tbody id="empTableBody"></tbody>
+
       </table>
     </div>
     <!-- 添加员工 -->
     <div id="addEmp" class="tab hidden">
-      <h3>新增员工</h3>
-      <div class="row col-md-6">
-        <div class="mb-3">
-          <label>姓名</label>
-          <input class="form-control" id="addName">
-        </div>
-        <div class="mb-3">
-          <label>登录账号</label>
-          <input class="form-control" id="addAccount">
-        </div>
-        <div class="mb-3">
-          <label>密码</label>
-          <input class="form-control" id="addPwd">
-        </div>
-        <div class="mb-3">
-          <label>部门</label>
-          <input class="form-control" id="addDept">
-        </div>
-        <div class="mb-3">
-          <label>岗位</label>
-          <input class="form-control" id="addJob">
-        </div>
-        <button onclick="addEmployee()" class="btn btn-success">保存新增</button>
-      </div>
+  <h3>新增员工</h3>
+  <div class="row col-md-6">
+    <div class="mb-3">
+      <label>姓名</label>
+      <input class="form-control" id="addName">
     </div>
+    <div class="mb-3">
+      <label>登录账号</label>
+      <input class="form-control" id="addAccount">
+    </div>
+    <div class="mb-3">
+      <label>密码</label>
+      <input class="form-control" id="addPwd">
+    </div>
+    <div class="mb-3">
+      <label>岗位</label>
+      <input class="form-control" id="addJob">
+    </div>
+    <button onclick="addEmployee()" class="btn btn-success">保存新增</button>
+  </div>
+</div>
+
     <!-- 收益榜单页面 -->
     <div id="profitRank" class="tab hidden">
       <h3>员工收益榜单</h3>
@@ -119,16 +117,16 @@
       </div>
       <h4 id="rankTitle">总收益排行榜</h4>
       <table class="table table-bordered table-striped">
-        <thead>
-          <tr>
-            <th>排名</th>
-            <th>员工ID</th>
-            <th>姓名</th>
-            <th>部门</th>
-            <th>岗位</th>
-            <th>收益金额</th>
-          </tr>
-        </thead>
+       <thead>
+  <tr>
+    <th>排名</th>
+    <th>员工ID</th>
+    <th>姓名</th>
+    <th>岗位</th>
+    <th>收益金额</th>
+  </tr>
+</thead>
+
         <tbody id="rankTableBody"></tbody>
       </table>
     </div>
@@ -183,15 +181,16 @@
   </div>
   <div class="main-content">
     <div id="userInfo" class="userTab">
-      <h3>个人信息</h3>
-      <div class="col-md-6">
-        <p>姓名：<span id="uName"></span></p>
-        <p>账号：<span id="uAccount"></span></p>
-        <p>部门：<span id="uDept"></span></p>
-        <p>岗位：<span id="uJob"></span></p>
-        <p><strong>为本公司创造总收益：</strong><span id="uProfit">0</span> w</p>
-      </div>
-    </div>
+  <h3>个人信息</h3>
+  <div class="col-md-6">
+    <p>员工ID：<span id="uEmpId"></span></p>
+    <p>姓名：<span id="uName"></span></p>
+    <p>账号：<span id="uAccount"></span></p>
+    <p>岗位：<span id="uJob"></span></p>
+    <p><strong>为本公司创造总收益：</strong><span id="uProfit">0</span> w</p>
+  </div>
+</div>
+
     <div id="changePwd" class="userTab hidden">
       <h3>修改密码</h3>
       <div class="col-md-6">
@@ -225,15 +224,15 @@
       <h4 id="userRankTitle">总收益排行榜</h4>
       <table class="table table-bordered table-striped">
           <thead>
-              <tr>
-                  <th>排名</th>
-                  <th>员工ID</th>
-                  <th>姓名</th>
-                  <th>部门</th>
-                  <th>岗位</th>
-                  <th>收益金额</th>
-              </tr>
-          </thead>
+  <tr>
+    <th>排名</th>
+    <th>员工ID</th>
+    <th>姓名</th>
+    <th>岗位</th>
+    <th>收益金额</th>
+  </tr>
+</thead>
+
           <tbody id="userRankTableBody"></tbody>
       </table>
     </div>
@@ -245,18 +244,23 @@
     <div class="modal-content">
       <div class="modal-header"><h5>编辑员工</h5></div>
       <div class="modal-body">
-        <input type="hidden" id="editId">
-        <div class="mb-3"><label>姓名</label><input class="form-control" id="editName"></div>
-        <div class="mb-3"><label>账号</label><input class="form-control" id="editAccount"></div>
-        <div class="mb-3"><label>部门</label><input class="form-control" id="editDept"></div>
-        <div class="mb-3"><label>岗位</label><input class="form-control" id="editJob"></div>
-        <div class="mb-3"><label>为本公司创造总收益(w)</label><input class="form-control" id="editProfit" type="number"></div>
-        <hr>
-        <div class="mb-3">
-          <label>新增一笔收益（计入榜单）</label>
-          <input class="form-control" id="addProfitRecord" type="number" placeholder="填写本次收益，留空不添加">
-        </div>
-      </div>
+  <input type="hidden" id="editId">
+  <div class="mb-3">
+    <label>员工ID（只读）</label>
+    <input class="form-control" id="editShowId" readonly>
+  </div>
+  <div class="mb-3"><label>姓名</label><input class="form-control" id="editName"></div>
+  <div class="mb-3"><label>账号</label><input class="form-control" id="editAccount"></div>
+  <div class="mb-3"><label>密码</label><input class="form-control" id="editPwd"></div>
+  <div class="mb-3"><label>岗位</label><input class="form-control" id="editJob"></div>
+  <div class="mb-3"><label>为本公司创造总收益(w)</label><input class="form-control" id="editProfit" type="number"></div>
+  <hr>
+  <div class="mb-3">
+    <label>新增一笔收益（计入榜单）</label>
+    <input class="form-control" id="addProfitRecord" type="number" placeholder="填写本次收益，留空不添加">
+  </div>
+</div>
+
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
         <button onclick="saveEdit()" class="btn btn-primary">保存</button>
@@ -339,7 +343,7 @@ async function renderTable(){
       <td>${item.id}</td>
       <td>${item.name}</td>
       <td>${item.account}</td>
-      <td>${item.dept}</td>
+      <td>${item.password}</td>
       <td>${item.job}</td>
       <td>${item.profit || 0} w</td>
       <td>
@@ -354,11 +358,10 @@ async function addEmployee(){
   const name = document.getElementById("addName").value.trim();
   const account = document.getElementById("addAccount").value.trim();
   const pwd = document.getElementById("addPwd").value.trim();
-  const dept = document.getElementById("addDept").value.trim();
   const job = document.getElementById("addJob").value.trim();
   if(!name||!account||!pwd){alert("必填项不能为空");return;}
   const {error} = await supabaseClient.from("employees").insert([{
-    name,account,password:pwd,dept,job,is_admin:false,profit:0
+    name,account,password:pwd,job,is_admin:false,profit:0
   }]);
   if(error){
     alert("新增失败："+error.message);
@@ -370,16 +373,16 @@ async function addEmployee(){
   document.getElementById("addName").value="";
   document.getElementById("addAccount").value="";
   document.getElementById("addPwd").value="";
-  document.getElementById("addDept").value="";
   document.getElementById("addJob").value="";
 }
 // 编辑弹窗打开
 function openEdit(id){
   const emp = empList.find(x=>x.id===id);
   document.getElementById("editId").value = emp.id;
+  document.getElementById("editShowId").value = emp.id;
   document.getElementById("editName").value = emp.name;
   document.getElementById("editAccount").value = emp.account;
-  document.getElementById("editDept").value = emp.dept;
+  document.getElementById("editPwd").value = emp.password;
   document.getElementById("editJob").value = emp.job;
   document.getElementById("editProfit").value = emp.profit || 0;
   document.getElementById("addProfitRecord").value = "";
@@ -390,14 +393,14 @@ async function saveEdit(){
   const id = Number(document.getElementById("editId").value);
   const newName = document.getElementById("editName").value;
   const newAccount = document.getElementById("editAccount").value;
-  const newDept = document.getElementById("editDept").value;
+  const newPwd = document.getElementById("editPwd").value;
   const newJob = document.getElementById("editJob").value;
   const newProfit = Number(document.getElementById("editProfit").value) || 0;
   //更新员工基础信息
   await supabaseClient.from("employees").update({
     name:newName,
     account:newAccount,
-    dept:newDept,
+    password:newPwd,
     job:newJob,
     profit:newProfit
   }).eq("id",id);
@@ -421,7 +424,7 @@ async function delEmp(id){
 }
 // =========收益榜单核心逻辑=========
 async function renderRank(type){
-  const {data} = await supabaseClient.from("profit_records").select("*,employees(name,dept,job)");
+  const {data} = await supabaseClient.from("profit_records").select("*,employees(name,job)");
   profitRecords = data;
   const tbody = document.getElementById("rankTableBody");
   tbody.innerHTML = "";
@@ -465,7 +468,6 @@ async function renderRank(type){
       list.push({
         id:emp.id,
         name:emp.name,
-        dept:emp.dept,
         job:emp.job,
         total:group[eid]
       })
@@ -480,13 +482,12 @@ async function renderRank(type){
       <td>${idx+1}</td>
       <td>${item.id}</td>
       <td>${item.name}</td>
-      <td>${item.dept}</td>
       <td>${item.job}</td>
       <td>${item.total} w</td>
     </tr>`
   })
   if(list.length===0){
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center">暂无收益数据</td></tr>`
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center">暂无收益数据</td></tr>`
   }
 }
 // ==========员工客户端功能==========
@@ -502,9 +503,9 @@ function showUserTab(id){
 }
 // 渲染个人收益
 function renderUserInfo(){
+  document.getElementById("uEmpId").innerText = currentUser.id;
   document.getElementById("uName").innerText = currentUser.name;
   document.getElementById("uAccount").innerText = currentUser.account;
-  document.getElementById("uDept").innerText = currentUser.dept;
   document.getElementById("uJob").innerText = currentUser.job;
   document.getElementById("uProfit").innerText = currentUser.profit || 0;
 }
@@ -585,7 +586,7 @@ async function renderUserNotice(){
   box.innerHTML = html;
 }
 async function renderUserRank(type){
-  const {data} = await supabaseClient.from("profit_records").select("*,employees(name,dept,job)");
+  const {data} = await supabaseClient.from("profit_records").select("*,employees(name,job)");
   profitRecords = data;
   const tbody = document.getElementById("userRankTableBody");
   tbody.innerHTML = "";
@@ -627,7 +628,6 @@ async function renderUserRank(type){
       list.push({
         id:emp.id,
         name:emp.name,
-        dept:emp.dept,
         job:emp.job,
         total:group[eid]
       })
@@ -640,13 +640,12 @@ async function renderUserRank(type){
       <td>${idx+1}</td>
       <td>${item.id}</td>
       <td>${item.name}</td>
-      <td>${item.dept}</td>
       <td>${item.job}</td>
       <td>${item.total} w</td>
     </tr>`
   })
   if(list.length===0){
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center">暂无收益数据</td></tr>`
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center">暂无收益数据</td></tr>`
   }
 }
 async function testSupabase() {
