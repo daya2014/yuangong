@@ -272,7 +272,8 @@
 <script>
 // =========Supabase初始化 GithubPages+移动端兼容版=========
 // ====================== 代理配置【这里已经填好你的Cloudflare Workers地址】======================
-const PROXY_API = "https://supabase-proxy.3985435379.workers.dev/";
+const PROXY_API = "https://yuangong.vercel.app/api/proxy";
+
 
 async function proxyQuery(table, op, payload=null){
   const resp = await fetch(PROXY_API, {
