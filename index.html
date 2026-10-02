@@ -271,25 +271,20 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // =========Supabase初始化 GithubPages+移动端兼容版=========
-const SUPABASE_URL = "https://yiedgsxpnaiahgnghcrn.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZWRnc3hwbmFpYWhnbmdoY3JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4NTMwODQsImV4cCI6MjEwNjQyOTA4NH0.tEP8wsQKCa3QNwDL-KBdjbLAIB8GUtLX0saJoXTLAf8";
-let supabaseClient;
-if(!window.supabaseGlobal){
-  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: {
-      fetch: async (...args) => {
-        // 10秒超时，手机弱网防止卡死
-        const fetchPromise = fetch(...args);
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("请求超时，网络无法访问Supabase")), 10000)
-        );
-        return Promise.race([fetchPromise, timeoutPromise]);
-      }
-    }
+// ====================== 代理配置【这里已经填好你的Cloudflare Workers地址】======================
+const PROXY_API = "https://supabase-proxy.3985435379.workers.dev/";
+
+async function proxyQuery(table, op, payload=null){
+  const resp = await fetch(PROXY_API, {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json"
+    },
+    body: JSON.stringify({
+      table, op, payload
+    })
   });
-  window.supabaseGlobal = supabaseClient;
-}else{
-  supabaseClient = window.supabaseGlobal;
+  return await resp.json();
 }
 
 let empList = [];
@@ -298,35 +293,33 @@ const modal = new bootstrap.Modal(document.getElementById('editModal'));
 let profitRecords = [];
 let noticeList = [];
 
-// ===== Supabase 数据加载函数【GithubPages移动端容错】 =====
+// 加载全部基础数据
 async function loadAllData(){
   try{
-    const {data:empData,error:e1} = await supabaseClient.from("employees").select("*");
-    if(e1) throw e1;
-    empList = empData || [];
+    const resEmp = await proxyQuery("employees","select");
+    empList = resEmp.data || [];
 
-    const {data:profitData,error:e2} = await supabaseClient.from("profit_records").select("*");
-    if(e2) throw e2;
-    profitRecords = profitData || [];
+    const resProfit = await proxyQuery("profit_records","select");
+    profitRecords = resProfit.data || [];
 
-    const {data:noticeData,error:e3} = await supabaseClient.from("announcements").select("*").order("created_at",{ascending:false});
-    if(e3) throw e3;
-    noticeList = noticeData || [];
+    const resNotice = await proxyQuery("announcements","select",{
+      order:{col:"created_at",asc:false}
+    });
+    noticeList = resNotice.data || [];
     console.log("✅数据加载成功");
   }catch(err){
-    alert("⚠数据库连接失败：" + err.message + "\n手机网络大概率无法访问Supabase服务器");
-    console.error("loadAllData错误：",err);
+    alert("数据库连接失败：" + err.message);
+    console.error(err);
   }
 }
 
-}
-// 登录函数
+// 登录
 async function login(){
   const acc = document.getElementById("loginUser").value.trim();
   const pwd = document.getElementById("loginPwd").value.trim();
-  // 从supabase查询员工账号密码
-  const {data,error} = await supabaseClient.from("employees").select("*").eq("account",acc).eq("password",pwd).single();
-  if(error || !data){
+  const allEmp = await proxyQuery("employees","select");
+  const data = allEmp.data.find(item=> item.account === acc && item.password === pwd);
+  if(!data){
     alert("账号或密码错误");
     return;
   }
@@ -340,23 +333,11 @@ async function login(){
     renderUserInfo();
   }
 }
-// 退出登录
-function logout(){
-  currentUser=null;
-  document.getElementById("loginPage").classList.remove("hidden");
-  document.getElementById("adminPage").classList.add("hidden");
-  document.getElementById("userPage").classList.add("hidden");
-  document.getElementById("loginUser").value="";
-  document.getElementById("loginPwd").value="";
-}
-// ==========管理员功能==========
-function showTab(id){
-  document.querySelectorAll(".tab").forEach(el=>el.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
-}
+
+// 管理员渲染员工表格
 async function renderTable(){
-  const {data} = await supabaseClient.from("employees").select("*");
-  empList = data;
+  const res = await proxyQuery("employees","select");
+  empList = res.data;
   const tbody = document.getElementById("empTableBody");
   tbody.innerHTML="";
   empList.forEach(item=>{
@@ -375,18 +356,21 @@ async function renderTable(){
     </tr>`
   })
 }
+
 // 新增员工
 async function addEmployee(){
   const name = document.getElementById("addName").value.trim();
   const account = document.getElementById("addAccount").value.trim();
   const pwd = document.getElementById("addPwd").value.trim();
   const job = document.getElementById("addJob").value.trim();
+  const isAdmin = document.getElementById("addIsAdmin")?.checked || false;
+
   if(!name||!account||!pwd){alert("必填项不能为空");return;}
-  const {error} = await supabaseClient.from("employees").insert([{
-    name,account,password:pwd,job,is_admin:false,profit:0
-  }]);
-  if(error){
-    alert("新增失败："+error.message);
+  const res = await proxyQuery("employees","insert",{
+    data:{name,account,password:pwd,job,is_admin: isAdmin,profit:0}
+  });
+  if(res.error){
+    alert("新增失败："+res.error.message);
     return;
   }
   alert("新增成功");
@@ -396,21 +380,10 @@ async function addEmployee(){
   document.getElementById("addAccount").value="";
   document.getElementById("addPwd").value="";
   document.getElementById("addJob").value="";
+  if(document.getElementById("addIsAdmin")) document.getElementById("addIsAdmin").checked=false;
 }
-// 编辑弹窗打开
-function openEdit(id){
-  const emp = empList.find(x=>x.id===id);
-  document.getElementById("editId").value = emp.id;
-  document.getElementById("editShowId").value = emp.id;
-  document.getElementById("editName").value = emp.name;
-  document.getElementById("editAccount").value = emp.account;
-  document.getElementById("editPwd").value = emp.password;
-  document.getElementById("editJob").value = emp.job;
-  document.getElementById("editProfit").value = emp.profit || 0;
-  document.getElementById("addProfitRecord").value = "";
-  modal.show();
-}
-// 保存编辑 + 添加收益记录
+
+// 保存编辑员工
 async function saveEdit(){
   const id = Number(document.getElementById("editId").value);
   const newName = document.getElementById("editName").value;
@@ -418,36 +391,110 @@ async function saveEdit(){
   const newPwd = document.getElementById("editPwd").value;
   const newJob = document.getElementById("editJob").value;
   const newProfit = Number(document.getElementById("editProfit").value) || 0;
-  //更新员工基础信息
-  await supabaseClient.from("employees").update({
-    name:newName,
-    account:newAccount,
-    password:newPwd,
-    job:newJob,
-    profit:newProfit
-  }).eq("id",id);
-  //新增一笔收益记录，用于榜单
+  const newIsAdmin = document.getElementById("editIsAdmin").checked;
+
+  await proxyQuery("employees","update",{
+    data:{
+      name:newName,
+      account:newAccount,
+      password:newPwd,
+      job:newJob,
+      profit:newProfit,
+      is_admin: newIsAdmin
+    },
+    eq:["id",id]
+  });
+
   const addP = Number(document.getElementById("addProfitRecord").value);
   if(addP >0){
-    await supabaseClient.from("profit_records").insert([{
-      emp_id:id,
-      amount:addP
-    }])
+    await proxyQuery("profit_records","insert",{
+      data:{emp_id:id,amount:addP}
+    })
   }
   await renderTable();
   modal.hide();
   alert("修改成功");
 }
+
+// 删除员工
 async function delEmp(id){
   if(!confirm("确定删除吗？"))return;
-  await supabaseClient.from("employees").delete().eq("id",id);
-  await supabaseClient.from("profit_records").delete().eq("emp_id",id);
+  await proxyQuery("employees","delete",{eq:["id",id]});
+  await proxyQuery("profit_records","delete",{eq:["emp_id",id]});
   await renderTable();
 }
-// =========收益榜单核心逻辑=========
+
+// ==========公告相关==========
+async function publishNotice(){
+  const title = document.getElementById("noticeTitle").value.trim();
+  const content = document.getElementById("noticeContent").value.trim();
+  if(!title || !content){
+    alert("标题和内容不能为空！");
+    return;
+  }
+  await proxyQuery("announcements","insert",{
+    data:{title,content,creator_emp_id:currentUser.id}
+  });
+  alert("公告发布成功！员工端可以查看");
+  document.getElementById("noticeTitle").value="";
+  document.getElementById("noticeContent").value="";
+  renderNoticeAdmin();
+}
+
+async function renderNoticeAdmin(){
+  const res = await proxyQuery("announcements","select",{order:{col:"created_at",asc:false}});
+  noticeList = res.data;
+  const tbody = document.getElementById("noticeTableBody");
+  tbody.innerHTML="";
+  noticeList.forEach(item=>{
+    const t = new Date(item.created_at).toLocaleString();
+    tbody.innerHTML +=`
+      <tr>
+        <td>${item.id}</td>
+        <td>${item.title}</td>
+        <td>${t}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="delNotice(${item.id})">删除</button></td>
+      </tr>
+    `
+  })
+}
+
+async function delNotice(id){
+  if(!confirm("确定删除这条公告？员工将看不到这条公告"))return;
+  await proxyQuery("announcements","delete",{eq:["id",id]});
+  renderNoticeAdmin();
+}
+
+async function renderUserNotice(){
+  const res = await proxyQuery("announcements","select",{order:{col:"created_at",asc:false}});
+  noticeList = res.data;
+  const box = document.getElementById("userNoticeBox");
+  if(noticeList.length ===0){
+    box.innerHTML = "<div class='alert alert-info'>暂无公告</div>";
+    return;
+  }
+  let html = "";
+  noticeList.forEach(item=>{
+    const t = new Date(item.created_at).toLocaleString();
+    html += `
+    <div class="card mb-3">
+      <div class="card-header">
+        <h5>${item.title}</h5>
+        <small class="text-muted">发布时间：${t}</small>
+      </div>
+      <div class="card-body">
+        <p>${item.content}</p>
+      </div>
+    </div>
+    `
+  })
+  box.innerHTML = html;
+}
+
+// ==========收益榜单 管理员端==========
 async function renderRank(type){
-  const {data} = await supabaseClient.from("profit_records").select("*,employees(name,job)");
-  profitRecords = data;
+  const res = await proxyQuery("profit_records","select");
+  profitRecords = res.data;
   const tbody = document.getElementById("rankTableBody");
   tbody.innerHTML = "";
   let titleText = "";
@@ -476,13 +523,11 @@ async function renderRank(type){
     filterRecords = [...profitRecords];
   }
   document.getElementById("rankTitle").innerText = titleText;
-  // 分组求和
   let group = {};
   filterRecords.forEach(r=>{
     if(!group[r.emp_id]) group[r.emp_id] = 0;
     group[r.emp_id] += r.amount;
   });
-  // 转数组，关联员工信息
   let list = [];
   for(let eid in group){
     const emp = empList.find(x=>x.id == eid);
@@ -495,9 +540,7 @@ async function renderRank(type){
       })
     }
   }
-  // 从高到低排序
   list.sort((a,b)=>b.total - a.total);
-  // 渲染表格
   list.forEach((item,idx)=>{
     tbody.innerHTML += `
     <tr>
@@ -512,104 +555,11 @@ async function renderRank(type){
     tbody.innerHTML = `<tr><td colspan="5" class="text-center">暂无收益数据</td></tr>`
   }
 }
-// ==========员工客户端功能==========
-function showUserTab(id){
-  document.querySelectorAll(".userTab").forEach(el=>el.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
-  if(id === "userNotice"){
-    renderUserNotice();
-  }
-  if(id === "userRank"){
-    renderUserRank("total");
-  }
-}
-// 渲染个人收益
-function renderUserInfo(){
-  document.getElementById("uEmpId").innerText = currentUser.id;
-  document.getElementById("uName").innerText = currentUser.name;
-  document.getElementById("uAccount").innerText = currentUser.account;
-  document.getElementById("uJob").innerText = currentUser.job;
-  document.getElementById("uProfit").innerText = currentUser.profit || 0;
-}
-async function updatePwd(){
-  const old = document.getElementById("oldPwd").value;
-  const newP = document.getElementById("newPwd").value;
-  if(currentUser.password !== old){alert("旧密码错误");return;}
-  if(!newP){alert("新密码不能为空");return;}
-  await supabaseClient.from("employees").update({password:newP}).eq("id",currentUser.id);
-  alert("密码修改成功，请重新登录");
-  logout();
-}
-// ==========公告功能==========
-function noticeTab(){
-  showTab("noticeTab");
-  renderNoticeAdmin();
-}
-async function publishNotice(){
-  const title = document.getElementById("noticeTitle").value.trim();
-  const content = document.getElementById("noticeContent").value.trim();
-  if(!title || !content){
-    alert("标题和内容不能为空！");
-    return;
-  }
-  await supabaseClient.from("announcements").insert([{
-    title,content,creator_emp_id:currentUser.id
-  }]);
-  alert("公告发布成功！员工端可以查看");
-  document.getElementById("noticeTitle").value="";
-  document.getElementById("noticeContent").value="";
-  renderNoticeAdmin();
-}
-async function renderNoticeAdmin(){
-  const {data} = await supabaseClient.from("announcements").select("*").order("created_at",{ascending:false});
-  noticeList = data;
-  const tbody = document.getElementById("noticeTableBody");
-  tbody.innerHTML="";
-  noticeList.forEach(item=>{
-    const t = new Date(item.created_at).toLocaleString();
-    tbody.innerHTML +=`
-      <tr>
-        <td>${item.id}</td>
-        <td>${item.title}</td>
-        <td>${t}</td>
-        <td><button class="btn btn-sm btn-danger" onclick="delNotice(${item.id})">删除</button></td>
-      </tr>
-    `
-  })
-}
-async function delNotice(id){
-  if(!confirm("确定删除这条公告？员工将看不到这条公告"))return;
-  await supabaseClient.from("announcements").delete().eq("id",id);
-  renderNoticeAdmin();
-}
-async function renderUserNotice(){
-  const {data} = await supabaseClient.from("announcements").select("*").order("created_at",{ascending:false});
-  noticeList = data;
-  const box = document.getElementById("userNoticeBox");
-  if(noticeList.length ===0){
-    box.innerHTML = "<div class='alert alert-info'>暂无公告</div>";
-    return;
-  }
-  let html = "";
-  noticeList.forEach(item=>{
-    const t = new Date(item.created_at).toLocaleString();
-    html += `
-    <div class="card mb-3">
-      <div class="card-header">
-        <h5>${item.title}</h5>
-        <small class="text-muted">发布时间：${t}</small>
-      </div>
-      <div class="card-body">
-        <p>${item.content}</p>
-      </div>
-    </div>
-    `
-  })
-  box.innerHTML = html;
-}
+
+// ==========收益榜单 员工端==========
 async function renderUserRank(type){
-  const {data} = await supabaseClient.from("profit_records").select("*,employees(name,job)");
-  profitRecords = data;
+  const res = await proxyQuery("profit_records","select");
+  profitRecords = res.data;
   const tbody = document.getElementById("userRankTableBody");
   tbody.innerHTML = "";
   let titleText = "";
@@ -670,15 +620,83 @@ async function renderUserRank(type){
     tbody.innerHTML = `<tr><td colspan="5" class="text-center">暂无收益数据</td></tr>`
   }
 }
-async function testSupabase() {
-  const { data, error } = await supabaseClient.from('announcements').select('*');
-  console.log("测试查询结果：", data, error);
+
+// 修改密码
+async function updatePwd(){
+  const old = document.getElementById("oldPwd").value;
+  const newP = document.getElementById("newPwd").value;
+  if(currentUser.password !== old){alert("旧密码错误");return;}
+  if(!newP){alert("新密码不能为空");return;}
+  await proxyQuery("employees","update",{
+    data:{password:newP},
+    eq:["id",currentUser.id]
+  });
+  alert("密码修改成功，请重新登录");
+  logout();
 }
-//页面加载完成自动执行测试
+
+// 退出登录
+function logout(){
+  currentUser=null;
+  document.getElementById("loginPage").classList.remove("hidden");
+  document.getElementById("adminPage").classList.add("hidden");
+  document.getElementById("userPage").classList.add("hidden");
+  document.getElementById("loginUser").value="";
+  document.getElementById("loginPwd").value="";
+}
+
+// ==========管理员标签页切换==========
+function showTab(id){
+  document.querySelectorAll(".tab").forEach(el=>el.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+}
+
+// 打开编辑弹窗
+function openEdit(id){
+  const emp = empList.find(x=>x.id===id);
+  document.getElementById("editId").value = emp.id;
+  document.getElementById("editShowId").value = emp.id;
+  document.getElementById("editName").value = emp.name;
+  document.getElementById("editAccount").value = emp.account;
+  document.getElementById("editPwd").value = emp.password;
+  document.getElementById("editJob").value = emp.job;
+  document.getElementById("editProfit").value = emp.profit || 0;
+  document.getElementById("editIsAdmin").checked = emp.is_admin;
+  document.getElementById("addProfitRecord").value = "";
+  modal.show();
+}
+
+function noticeTab(){
+  showTab("noticeTab");
+  renderNoticeAdmin();
+}
+
+// ==========员工客户端标签页切换==========
+function showUserTab(id){
+  document.querySelectorAll(".userTab").forEach(el=>el.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+  if(id === "userNotice"){
+    renderUserNotice();
+  }
+  if(id === "userRank"){
+    renderUserRank("total");
+  }
+}
+
+// 渲染员工个人信息
+function renderUserInfo(){
+  document.getElementById("uEmpId").innerText = currentUser.id;
+  document.getElementById("uName").innerText = currentUser.name;
+  document.getElementById("uAccount").innerText = currentUser.account;
+  document.getElementById("uJob").innerText = currentUser.job;
+  document.getElementById("uProfit").innerText = currentUser.profit || 0;
+}
+
+// 页面加载自动拉取数据
 window.onload = async function(){
   await loadAllData();
-  await testSupabase();
 }
+
 
 </script>
 </body>
