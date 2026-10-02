@@ -270,33 +270,55 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// =========只初始化一次Supabase=========
+// =========Supabase初始化 GithubPages+移动端兼容版=========
 const SUPABASE_URL = "https://yiedgsxpnaiahgnghcrn.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZWRnc3hwbmFpYWhnbmdoY3JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4NTMwODQsImV4cCI6MjEwNjQyOTA4NH0.tEP8wsQKCa3QNwDL-KBdjbLAIB8GUtLX0saJoXTLAf8";
 let supabaseClient;
 if(!window.supabaseGlobal){
-  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: {
+      fetch: async (...args) => {
+        // 10秒超时，手机弱网防止卡死
+        const fetchPromise = fetch(...args);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("请求超时，网络无法访问Supabase")), 10000)
+        );
+        return Promise.race([fetchPromise, timeoutPromise]);
+      }
+    }
+  });
   window.supabaseGlobal = supabaseClient;
 }else{
   supabaseClient = window.supabaseGlobal;
 }
-// 内存临时缓存（从数据库加载后放这里）
+
 let empList = [];
 let currentUser = null;
 const modal = new bootstrap.Modal(document.getElementById('editModal'));
 let profitRecords = [];
 let noticeList = [];
-// ===== Supabase 数据加载函数 =====
+
+// ===== Supabase 数据加载函数【GithubPages移动端容错】 =====
 async function loadAllData(){
-  //读取员工
-  const {data:empData} = await supabaseClient.from("employees").select("*");
-  empList = empData || [];
-  //读取收益流水
-  const {data:profitData} = await supabaseClient.from("profit_records").select("*");
-  profitRecords = profitData || [];
-  //读取公告
-  const {data:noticeData} = await supabaseClient.from("announcements").select("*").order("created_at",{ascending:false});
-  noticeList = noticeData || [];
+  try{
+    const {data:empData,error:e1} = await supabaseClient.from("employees").select("*");
+    if(e1) throw e1;
+    empList = empData || [];
+
+    const {data:profitData,error:e2} = await supabaseClient.from("profit_records").select("*");
+    if(e2) throw e2;
+    profitRecords = profitData || [];
+
+    const {data:noticeData,error:e3} = await supabaseClient.from("announcements").select("*").order("created_at",{ascending:false});
+    if(e3) throw e3;
+    noticeList = noticeData || [];
+    console.log("✅数据加载成功");
+  }catch(err){
+    alert("⚠数据库连接失败：" + err.message + "\n手机网络大概率无法访问Supabase服务器");
+    console.error("loadAllData错误：",err);
+  }
+}
+
 }
 // 登录函数
 async function login(){
